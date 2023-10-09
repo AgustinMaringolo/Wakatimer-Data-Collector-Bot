@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Data;
 using System.Net;
 using System.Reflection.Metadata;
 using Microsoft.Extensions.Configuration;
@@ -10,90 +11,90 @@ class Program
     public static DateTime real_today = DateTime.Today;
     public static String summeris_endpoint = "/api/v1/users/current/summaries";
     public static String stats_endpoint = "/api/v1/users/current/stats/";
+
+    public static void exception(string message)
+    {
+        Console.WriteLine($"Error en la ejecución del bot {message}");
+        DatabaseHelper.ExecuteQuery($"insert into log (resultado, exception, date) values ('ERROR', '{message}', to_timestamp('{real_today.ToString("yyyyMMdd")}', 'yyyymmdd'))");
+        throw new Exception(message);
+    }
     static void Main(string[] args)
     {
 
         Console.WriteLine("Iniciando bot..");
-        Console.WriteLine(args[0]);
 
-        try
+        Console.WriteLine($"RETRO DAYS: {args[0]} ");
+
+
+        if (args[0] is not null) {
+            int retrodays = int.Parse(args[0]);
+            today = today.AddDays(retrodays);
+        }
+
+        Variables variables = new Variables();
+
+
+        DatabaseHelper database = new DatabaseHelper();
+        List<Dictionary<string, object>> users = DatabaseHelper.ExecuteQuery("SELECT * FROM users us inner join users_tokens tk on tk.user_id = us.usuario_id");
+        validate_expirate(users);
+        Console.WriteLine(variables.api_host);
+
+        foreach (var row in users)
         {
-            
-            Variables variables = new Variables();
+            Console.WriteLine($"***Comienza la busqueda de información para el usuario {row["nombre"]}***");
+            ApiClient apiClient = new ApiClient(variables.api_host, (string)row["access_token"]);
 
-            
+            get_summeries_by_day(apiClient, row, database);
 
-
-
-            DatabaseHelper database = new DatabaseHelper();
-            List<Dictionary<string, object>> users = DatabaseHelper.ExecuteQuery("SELECT * FROM users us inner join users_tokens tk on tk.user_id = us.usuario_id");
-            validate_expirate(users);
-            Console.WriteLine(variables.api_host);
-
-            foreach (var row in users)
+            if (today.DayOfWeek == DayOfWeek.Monday)
             {
+                Console.WriteLine($"Obteniendo los datos semanales para el usuario {row["nombre"]}");
+                get_summeries_by_week(apiClient, row, database);
 
-                Console.WriteLine($"***Comienza la busqueda de información para el usuario {row["nombre"]}***");
-                ApiClient apiClient = new ApiClient(variables.api_host, (string)row["access_token"]);
-
-                get_summeries_by_day(apiClient, row, database);
-
-                if (today.DayOfWeek == DayOfWeek.Monday)
-                {
-                    Console.WriteLine($"Obteniendo los datos semanales para el usuario {row["nombre"]}");
-                    get_summeries_by_week(apiClient, row, database);
-
-                }
-
-                if (today.DayOfWeek == DayOfWeek.Tuesday)
-                {
-                    string mode = "last_7_days";
-                    Console.WriteLine($"Obteniendo los datos de estadisticas para el usuario {row["nombre"]} modo: {mode}");
-                    get_stats(apiClient, row, database, mode, 1);
-
-                }
-
-                if (today.DayOfWeek == DayOfWeek.Wednesday)
-                {
-                    string mode = "last_30_days";
-                    Console.WriteLine($"Obteniendo los datos de estadisticas para el usuario {row["nombre"]} modo: {mode}");
-                    get_stats(apiClient, row, database, mode, 2);
-
-                }
-
-                if (today.DayOfWeek == DayOfWeek.Tuesday)
-                {
-                    string mode = "last_6_months";
-                    Console.WriteLine($"Obteniendo los datos de estadisticas para el usuario {row["nombre"]} modo: {mode}");
-                    get_stats(apiClient, row, database, mode, 3);
-                }
-
-                if (today.DayOfWeek == DayOfWeek.Friday)
-                {
-                    string mode = "last_year";
-                    Console.WriteLine($"Obteniendo los datos de estadisticas para el usuario {row["nombre"]} modo: {mode}");
-                    get_stats(apiClient, row, database, mode, 4);
-
-                }
-
-                if (today.DayOfWeek == DayOfWeek.Saturday)
-                {
-                    string mode = "all_time";
-                    Console.WriteLine($"Obteniendo los datos de estadisticas para el usuario {row["nombre"]} modo: {mode}");
-                    get_stats(apiClient, row, database, mode, 5);
-                }
-                
             }
 
-            DatabaseHelper.ExecuteQuery($"insert into log (resultado, date) values ('Ok', to_timestamp('{real_today.ToString("yyyyMMdd")}', 'yyyymmdd'))");
-            Console.WriteLine($"Bot Finalizo corretamente.");
+            if (today.DayOfWeek == DayOfWeek.Tuesday)
+            {
+                string mode = "last_7_days";
+                Console.WriteLine($"Obteniendo los datos de estadisticas para el usuario {row["nombre"]} modo: {mode}");
+                get_stats(apiClient, row, database, mode, 1);
 
-        } catch (Exception e)
-        {
-            Console.WriteLine($"Error en la ejecución del bot {e.ToString()}");
-            DatabaseHelper.ExecuteQuery($"insert into log (resultado, exception, date) values ('ERROR', '{e.ToString()}', to_timestamp('{real_today.ToString("yyyyMMdd")}', 'yyyymmdd'))");
+            }
 
-        };
+            if (today.DayOfWeek == DayOfWeek.Wednesday)
+            {
+                string mode = "last_30_days";
+                Console.WriteLine($"Obteniendo los datos de estadisticas para el usuario {row["nombre"]} modo: {mode}");
+                get_stats(apiClient, row, database, mode, 2);
+
+            }
+
+            if (today.DayOfWeek == DayOfWeek.Thursday)
+            {
+                string mode = "last_6_months";
+                Console.WriteLine($"Obteniendo los datos de estadisticas para el usuario {row["nombre"]} modo: {mode}");
+                get_stats(apiClient, row, database, mode, 3);
+            }
+
+            if (today.DayOfWeek == DayOfWeek.Friday)
+            {
+                string mode = "last_year";
+                Console.WriteLine($"Obteniendo los datos de estadisticas para el usuario {row["nombre"]} modo: {mode}");
+                get_stats(apiClient, row, database, mode, 4);
+
+            }
+
+            if (today.DayOfWeek == DayOfWeek.Saturday)
+            {
+                string mode = "all_time";
+                Console.WriteLine($"Obteniendo los datos de estadisticas para el usuario {row["nombre"]} modo: {mode}");
+                get_stats(apiClient, row, database, mode, 5);
+            }
+                
+        }
+
+        DatabaseHelper.ExecuteQuery($"insert into log (resultado, date) values ('Ok', to_timestamp('{real_today.ToString("yyyyMMdd")}', 'yyyymmdd'))");
+        Console.WriteLine($"Bot Finalizo corretamente.");
             
     }
 
@@ -157,7 +158,7 @@ class Program
 
         Console.WriteLine("Guardando datos en la base de datos..");
 
-        string insert_sql = $"Insert into stats (stats, user_id, created_date, mode) values ('{response}', {row["usuario_id"]}, to_timestamp('{real_today.ToString("yyyyMMdd")}', 'yyyymmdd'), {mode_db}";
+        string insert_sql = $"Insert into stats (stats, user_id, created_date, mode) values ('{response}', {row["usuario_id"]}, to_timestamp('{real_today.ToString("yyyyMMdd")}', 'yyyymmdd'), {mode_db})";
 
         Console.WriteLine(insert_sql);
 

@@ -2,7 +2,11 @@
   "profiles": {
     "Wakatimer 6.0": {
       "commandName": "Project",
-      "commandLineArgs": "1"
+      "commandLineArgs": "2"
+    },
+    "WSL": {
+      "commandName": "WSL2",
+      "distributionName": ""
     }
   }
 }
