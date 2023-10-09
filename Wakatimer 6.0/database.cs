@@ -67,6 +67,8 @@ public class DatabaseHelper
             catch (Exception ex)
             {
                 Console.WriteLine($"Error al conectar a la base de datos: {ex.Message}");
+
+ 
             }
 
             return results;

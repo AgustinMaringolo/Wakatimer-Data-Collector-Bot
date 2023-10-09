@@ -11,42 +11,57 @@ using System.Threading.Tasks;
 
 public class ApiClient
 {
-    private readonly string baseUrl;
-    private readonly string bearerToken;
+    private readonly HttpClient httpClient;
 
     public ApiClient(string baseUrl, string bearerToken)
     {
-        this.baseUrl = baseUrl;
-        this.bearerToken = bearerToken;
+        httpClient = new HttpClient();
+        // Configurar la dirección base de la API
+        httpClient.BaseAddress = new Uri(baseUrl);
+
+        // Establecer el encabezado de autenticación Bearer
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
     }
 
-    public async Task<string> PostAsync(string endpoint, string content)
+
+    public string Post(string endpoint, string content)
     {
-        using (HttpClient httpClient = new HttpClient())
+        // Configurar el contenido de la solicitud POST
+        StringContent httpContent = new StringContent(content, System.Text.Encoding.UTF8, "application/json");
+
+        // Realizar la solicitud POST de forma síncrona
+        HttpResponseMessage response = httpClient.PostAsync(endpoint, httpContent).Result;
+
+        // Leer y devolver la respuesta como una cadena
+        if (response.IsSuccessStatusCode)
         {
-            // Configurar la dirección base de la API
-            httpClient.BaseAddress = new Uri(baseUrl);
-
-            // Establecer el encabezado de autenticación Bearer
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
-
-            // Configurar el contenido de la solicitud POST
-            StringContent httpContent = new StringContent(content, System.Text.Encoding.UTF8, "application/json");
-
-            // Realizar la solicitud POST
-            HttpResponseMessage response = await httpClient.PostAsync(endpoint, httpContent);
-
-            // Leer y devolver la respuesta como una cadena
-            if (response.IsSuccessStatusCode)
-            {
-                string responseBody = await response.Content.ReadAsStringAsync();
-                return responseBody;
-            }
-            else
-            {
-                Console.WriteLine($"Error en la solicitud: {response.StatusCode}");
-                return null;
-            }
+            string responseBody = response.Content.ReadAsStringAsync().Result;
+            return responseBody;
+        }
+        else
+        {
+            Console.WriteLine($"Error en la solicitud: {response.StatusCode}, {response.Content}");
+            return null;
         }
     }
+
+    public string Get(string endpoint)
+    {
+        // Realizar la solicitud POST de forma síncrona
+        HttpResponseMessage response = httpClient.GetAsync(endpoint).Result;
+
+        // Leer y devolver la respuesta como una cadena
+        if (response.IsSuccessStatusCode)
+        {
+            string responseBody = response.Content.ReadAsStringAsync().Result;
+            return responseBody;
+        }
+        else
+        {
+            string responseBody = response.Content.ReadAsStringAsync().Result;
+            Console.WriteLine($"Error en la solicitud: {response.StatusCode}, {responseBody}");
+            return null;
+        }
+    }
+
 }
